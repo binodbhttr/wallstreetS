@@ -1,3 +1,4 @@
 yfinance
 streamlit
 matplotlib
+sklearn
