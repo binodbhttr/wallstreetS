@@ -26,9 +26,15 @@ period = get_period(time_unit, time_value)
 @st.cache_data
 def load_data(ticker, period):
     data = yf.download(ticker, period=period)
-    data = data[['Close']].dropna()
+    if isinstance(data.columns, pd.MultiIndex):
+        # Multiple stocks — select specific ticker
+        data = data['Close'][ticker].to_frame()
+    else:
+        # Single stock — normal dataframe
+        data = data[['Close']]
     data['Date'] = data.index
     return data
+
 
 data = load_data(ticker, period)
 st.subheader(f"Historical Closing Prices for {ticker}")
