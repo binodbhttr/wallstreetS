@@ -62,7 +62,8 @@ model.fit(X_train, y_train)
 
 # Predictions
 preds = model.predict(X_test)
-rmse = mean_squared_error(y_test, preds, squared=False)
+mse = mean_squared_error(y_test, preds)
+rmse = np.sqrt(mse)
 
 st.subheader("🔍 Model Backtesting")
 fig, ax = plt.subplots(figsize=(10, 4))
