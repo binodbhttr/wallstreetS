@@ -26,14 +26,28 @@ period = get_period(time_unit, time_value)
 @st.cache_data
 def load_data(ticker, period):
     data = yf.download(ticker, period=period)
+    if data.empty:
+        st.error(f"No data found for ticker '{ticker}' with period '{period}'. Please check ticker or time range.")
+        return pd.DataFrame()  # Return empty DataFrame to prevent crashing
+    
     if isinstance(data.columns, pd.MultiIndex):
-        # Multiple stocks — select specific ticker
-        data = data['Close'][ticker].to_frame()
+        # Multiple stocks
+        if 'Close' in data.columns.levels[0]:
+            data = data['Close'][ticker].to_frame()
+        else:
+            st.error("No 'Close' price data found in downloaded multi-index data.")
+            return pd.DataFrame()
     else:
-        # Single stock — normal dataframe
-        data = data[['Close']]
+        # Single stock
+        if 'Close' in data.columns:
+            data = data[['Close']]
+        else:
+            st.error("No 'Close' column found in the downloaded data.")
+            return pd.DataFrame()
+
     data['Date'] = data.index
     return data
+
 
 
 data = load_data(ticker, period)
