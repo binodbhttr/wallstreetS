@@ -24,10 +24,17 @@ start_date = today - timedelta(days=n_days)
 @st.cache_data
 def load_data(ticker, start_date, end_date):
     data = yf.download(ticker, start=start_date, end=end_date)
+    print("Data loaded from Yahoo Finance")
     if data.empty:
         st.error(f"No data found for ticker '{ticker}' between {start_date} and {end_date}.")
         return pd.DataFrame()
+
+    if isinstance(data.columns, pd.MultiIndex):
+        # Flatten multiindex
+        data.columns = data.columns.get_level_values(0)
+    
     return data
+
 
 data = load_data(ticker, start_date, today)
 
