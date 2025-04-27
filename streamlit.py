@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from datetime import date, timedelta
 
 st.set_page_config(page_title="📈 Stock Price Predictor", layout="wide")
 st.title("📊 Stock Price Predictor with Backtesting")
@@ -13,48 +14,32 @@ st.title("📊 Stock Price Predictor with Backtesting")
 # Sidebar options
 st.sidebar.header("Configure Input")
 ticker = st.sidebar.text_input("Enter Stock Ticker (e.g., AAPL, MSFT, TSLA)", "AAPL")
-time_unit = st.sidebar.selectbox("Choose data range", ["Days", "Months", "Years"])
-time_value = st.sidebar.slider(f"Select number of {time_unit.lower()}", 1, 365 if time_unit=="Days" else 24 if time_unit=="Months" else 10, 30)
+n_days = st.sidebar.slider("Select number of past days", 30, 1825, 365)
 predict_ahead = st.sidebar.slider("Days to Predict Ahead", 1, 30, 7)
 
-# Convert to valid period string for yfinance
-def get_period(unit, value):
-    return f"{value}{unit[0].lower()}"
-
-period = get_period(time_unit, time_value)
+# Calculate dates
+today = date.today()
+start_date = today - timedelta(days=n_days)
 
 @st.cache_data
-def load_data(ticker, period):
-    data = yf.download(ticker, period=period)
+def load_data(ticker, start_date, end_date):
+    data = yf.download(ticker, start=start_date, end=end_date)
     if data.empty:
-        st.error(f"No data found for ticker '{ticker}' with period '{period}'. Please check ticker or time range.")
-        return pd.DataFrame()  # Return empty DataFrame to prevent crashing
-    
-    if isinstance(data.columns, pd.MultiIndex):
-        # Multiple stocks
-        if 'Close' in data.columns.levels[0]:
-            data = data['Close'][ticker].to_frame()
-        else:
-            st.error("No 'Close' price data found in downloaded multi-index data.")
-            return pd.DataFrame()
-    else:
-        # Single stock
-        if 'Close' in data.columns:
-            data = data[['Close']]
-        else:
-            st.error("No 'Close' column found in the downloaded data.")
-            return pd.DataFrame()
-
-    data['Date'] = data.index
+        st.error(f"No data found for ticker '{ticker}' between {start_date} and {end_date}.")
+        return pd.DataFrame()
     return data
 
+data = load_data(ticker, start_date, today)
 
+if data.empty:
+    st.stop()
 
-data = load_data(ticker, period)
 st.subheader(f"Historical Closing Prices for {ticker}")
 st.line_chart(data[['Close']])
 
 # Feature creation
+data = data[['Close']].dropna()
+data['Date'] = data.index
 data['Target'] = data['Close'].shift(-predict_ahead)
 data = data.dropna()
 data['Day'] = np.arange(len(data))
